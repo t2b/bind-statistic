@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import rrdtool
+from os import path
 
 STATSFILE = "/root/named.stats"
 KEYINDEX = {'Incoming Queries' : ["A",
@@ -127,15 +128,13 @@ def get_last_stats():
         stats = f.readlines()
     last_line = stats[-1]
     timestamp = last_line.split()[-1][1:-1]
-    search_line = last_line.replace("---","+++")
+    search_line = last_line.replace("---", "+++")
     first_line_number = stats.index(search_line)
     return timestamp, stats[first_line_number:]
 
 
 def build_dict(stats):
     section = None
-    #key = None
-    #value = None
 
     main_dict = dict()
 
@@ -149,7 +148,6 @@ def build_dict(stats):
         if line[:4] in ["+++ ", "--- "]:
             section = None
             continue
-        #line = line.split(maxsplit=1)
         line = line.split(" ", 1)
         key = line[1]
         value = line[0]
@@ -160,35 +158,39 @@ def build_dict(stats):
 def rrd_create(section):
     keys = KEYINDEX[section]
 
-    rrd_parameter = [section.replace(" ","_") + ".rrd", "--step", "60", "--start", '0']
+    rrd_parameter = [section.replace(" ", "_") + ".rrd",
+                     "--step", "60",
+                     "--start", '0']
 
     for key in keys:
-        print(len(key),key)
-	rrd_parameter.append("DS:" + key.replace(" ","_").replace("!","not") + ":COUNTER:90:U:U")
-    rrd_parameter += [
-                      "RRA:AVERAGE:0.5:1:780", # 1 min for 13 hours
-                      "RRA:AVERAGE:0.5:5:600", # 5 min for 2 day 2 hours
-                      "RRA:AVERAGE:0.5:30:600", # 30 min for 12.5 days
-                      "RRA:AVERAGE:0.5:120:600", # 2 hours for 50 days
-                      "RRA:AVERAGE:0.5:1440:4015", # 1 day for 732 days
-                      "RRA:MAX:0.5:1:780", # 1 min for 13 hours
-                      "RRA:MAX:0.5:5:600", # 5 min for 2 day 2 hours
-                      "RRA:MAX:0.5:30:600", # 30 min for 12.5 days
-                      "RRA:MAX:0.5:120:600", # 2 hours for 50 days
-                      "RRA:MAX:0.5:1440:4015", # 1 day for 732 days
-                      "RRA:MIN:0.5:1:780", # 1 min for 13 hours
-                      "RRA:MIN:0.5:5:600", # 5 min for 2 day 2 hours
-                      "RRA:MIN:0.5:30:600", # 30 min for 12.5 days
-                      "RRA:MIN:0.5:120:600", # 2 hours for 50 days
-                      "RRA:MIN:0.5:1440:4015", # 1 day for 732 days
+        rrd_parameter.append("DS:" + key.replace(" ", "_").replace("!", "not") +
+                             ":COUNTER:90:U:U")
+    rrd_parameter += ["RRA:AVERAGE:0.5:1:3000",  # 1 min for 30 hours
+                      "RRA:AVERAGE:0.5:5:4320",  # 5 min for 15 days
+                      "RRA:AVERAGE:0.5:30:3360",  # 30 min for 70 days
+                      "RRA:AVERAGE:0.5:120:4800",  # 2 hours for 400 days
+                      "RRA:AVERAGE:0.5:1440:4015",  # 1 day for 11 years
+                      "RRA:MIN:0.5:1:3000",  # 1 min for 30 hours
+                      "RRA:MIN:0.5:5:4320",  # 5 min for 15 days
+                      "RRA:MIN:0.5:30:3360",  # 30 min for 70 days
+                      "RRA:MIN:0.5:120:4800",  # 2 hours for 400 days
+                      "RRA:MIN:0.5:1440:4015",  # 1 day for 11 years
+                      "RRA:MAX:0.5:1:3000",  # 1 min for 30 hours
+                      "RRA:MAX:0.5:5:4320",  # 5 min for 15 days
+                      "RRA:MAX:0.5:30:3360",  # 30 min for 70 days
+                      "RRA:MAX:0.5:120:4800",  # 2 hours for 400 days
+                      "RRA:MAX:0.5:1440:4015",  # 1 day for 11 years
                       ]
     rrdtool.create(*rrd_parameter)
 
 
 def rrd_update(section, content, timestamp="N"):
-    values = ':'.join(map(lambda x : content[x], KEYINDEX[section]))
+    if not path.isfile(section.replace(" ", "_") + ".rrd"):
+        rrd_create(section)
+    values = ':'.join(map(lambda x: content[x], KEYINDEX[section]))
     print values
-    rrdtool.update(section.replace(" ","_") + ".rrd", timestamp + ":" + values)
+    rrdtool.update(section.replace(" ", "_") + ".rrd",
+                   timestamp + ":" + values)
 
 
 def main():
@@ -199,12 +201,14 @@ def main():
     stats_dict = build_dict(stats)
 
     for section in KEYINDEX:
-        if section in ['Resolver Statistics', 'Name Server Statistics', 'Socket I/O Statistics']:
+        if section in ['Resolver Statistics',
+                       'Name Server Statistics',
+                       'Socket I/O Statistics']:
             continue
         print('#####', section)
-	#rrd_create(section)
-	content = stats_dict[section]
-	rrd_update(section, content, timestamp)
+        # rrd_create(section)
+        content = stats_dict[section]
+        rrd_update(section, content, timestamp)
 
 #    for section in d:
 #        print("###", section)
