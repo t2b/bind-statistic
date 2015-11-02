@@ -3,6 +3,7 @@
 import rrdtool
 import colorsys
 from datetime import datetime
+from os import path
 
 STATSFILE = "/root/named.stats"
 KEYINDEX = {'Incoming Queries': [
@@ -141,44 +142,45 @@ def rainbow(n):
     return colors
 
 
-def rrd_graph(section):
+def get_filename(name, directory=""):
+    name = name.replace(" ", "_")
+    return path.join(directory, name)
+
+
+def get_DSname(name):
+    return name.replace(" ", "_").replace("!", "not")
+
+
+def rrd_graph(section, duration="6h", width=800, height=300):
     keys = KEYINDEX[section]
 
-    rrd_parameter = [section.replace(" ", "_") + ".png",
-                     "--start", "-12h",
+    outputfile = get_filename(section + "-" + duration + ".png")
+
+    rrd_parameter = [outputfile,
+                     "--start", "-" + duration,
                      "--end", "now",
-                     "-w", "800",
-                     "-h", "300",
+                     "-w", str(width),
+                     "-h", str(height),
                      "-a", "PNG",
-                     "--title", section,
+                     "--title", section + " - " + duration ,
                      "--watermark", str(datetime.now()),
                      "--vertical-label", "requests/s"]
 
     colors = rainbow(len(keys))
     for key in keys:
-        rrd_parameter.append("DEF:_" +
-                             key.replace(" ", "_").replace("!", "not") +
-                             "=" + section.replace(" ", "_") + ".rrd:" +
-                             key.replace(" ", "_").replace("!", "not") +
+        DSname = get_DSname(key)
+        rrdfile = get_filename(section + ".rrd")
+        rrd_parameter.append("DEF:_" + DSname + "=" + rrdfile + ":" + DSname +
                              ":AVERAGE")
 
     for i in xrange(len(keys)):
         key = keys[i]
-        rrd_parameter.append("LINE1:_" +
-                             key.replace(" ", "_").replace("!", "not") +
-                             colors[i] + ':' + key + '\\t')
-        rrd_parameter.append("GPRINT:_" +
-                             key.replace(" ", "_").replace("!", "not") +
-                             ":LAST:Cur\: %6.2lf\\t")
-        rrd_parameter.append("GPRINT:_" +
-                             key.replace(" ", "_").replace("!", "not") +
-                             ":AVERAGE:Avg\: %6.2lf\\t")
-        rrd_parameter.append("GPRINT:_" +
-                             key.replace(" ", "_").replace("!", "not") +
-                             ":MIN:MIN\: %6.2lf\\t")
-        rrd_parameter.append("GPRINT:_" +
-                             key.replace(" ", "_").replace("!", "not") +
-                             ":MAX:Max\: %6.2lf\\n")
+        DSname = "_" + get_DSname(key)
+        rrd_parameter.append("LINE1:" + DSname + colors[i] + ':' + key + '\\t')
+        rrd_parameter.append("GPRINT:" + DSname + ":LAST:Cur\: %6.2lf\\t")
+        rrd_parameter.append("GPRINT:" + DSname + ":AVERAGE:Avg\: %6.2lf\\t")
+        rrd_parameter.append("GPRINT:" + DSname + ":MIN:MIN\: %6.2lf\\t")
+        rrd_parameter.append("GPRINT:" + DSname + ":MAX:Max\: %6.2lf\\n")
 
     rrdtool.graph(*rrd_parameter)
 
@@ -192,7 +194,8 @@ def main():
         # rrd_create(section)
         # content = stats_dict[section]
         # rrd_update(section, content)
-        rrd_graph(section)
+        for duration in ("6h", "12h", "1d", "1w", "1m", "1y"):
+            rrd_graph(section, duration=duration)
 
 
 if __name__ == "__main__":
