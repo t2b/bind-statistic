@@ -2,6 +2,7 @@
 
 import rrdtool
 import colorsys
+from datetime import datetime
 
 STATSFILE = "/root/named.stats"
 KEYINDEX = {'Incoming Queries' : ["A",
@@ -136,8 +137,7 @@ def rainbow(n):
 def rrd_graph(section):
     keys = KEYINDEX[section]
 
-    from datetime import datetime
-    rrd_parameter = [section.replace(" ","_") + ".png", "--start", "-2h", "-w 800", "-h 300", "--title", section, "--watermark", str(datetime.now()) ]
+    rrd_parameter = [section.replace(" ","_") + ".png", "--start", "-12h", "--end", "now" , "-w 800", "-h 300", "--title", section, "--watermark", str(datetime.now()), "--vertical-label", "requests/s"]
 
     colors = rainbow(len(keys))
     for key in keys:
@@ -148,7 +148,8 @@ def rrd_graph(section):
         rrd_parameter.append("LINE1:_" + key.replace(" ","_").replace("!","not") + colors[i] + ':' + key + '\\t')
 	rrd_parameter.append("GPRINT:_" + key.replace(" ","_").replace("!","not") + ":LAST:Cur\: %6.2lf\\t")
 	rrd_parameter.append("GPRINT:_" + key.replace(" ","_").replace("!","not") + ":AVERAGE:Avg\: %6.2lf\\t")
-	rrd_parameter.append("GPRINT:_" + key.replace(" ","_").replace("!","not") + ":MAX:Max\: %6.2lf\\n")
+	rrd_parameter.append("GPRINT:_" + key.replace(" ","_").replace("!","not") + ":MAX:Max\: %6.2lf\\t")
+	rrd_parameter.append("GPRINT:_" + key.replace(" ","_").replace("!","not") + ":MIN:MIN\: %6.2lf\\n")
 
     rrdtool.graph(*rrd_parameter)
 
@@ -156,16 +157,10 @@ def main():
     for section in KEYINDEX:
         if section in ['Resolver Statistics', 'Name Server Statistics', 'Socket I/O Statistics']:
             continue
-        print('#####', section)
 	#rrd_create(section)
 	#content = stats_dict[section]
 	#rrd_update(section, content)
 	rrd_graph(section)
-
-#    for section in d:
-#        print("###", section)
-#        for key in d[section]:
-#            print(key)
 
 
 if __name__ == "__main__":

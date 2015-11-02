@@ -126,9 +126,10 @@ def get_last_stats():
     with open(STATSFILE) as f:
         stats = f.readlines()
     last_line = stats[-1]
+    timestamp = last_line.split()[-1][1:-1]
     search_line = last_line.replace("---","+++")
     first_line_number = stats.index(search_line)
-    return stats[first_line_number:]
+    return timestamp, stats[first_line_number:]
 
 
 def build_dict(stats):
@@ -175,18 +176,24 @@ def rrd_create(section):
                       "RRA:MAX:0.5:30:600", # 30 min for 12.5 days
                       "RRA:MAX:0.5:120:600", # 2 hours for 50 days
                       "RRA:MAX:0.5:1440:4015", # 1 day for 732 days
+                      "RRA:MIN:0.5:1:780", # 1 min for 13 hours
+                      "RRA:MIN:0.5:5:600", # 5 min for 2 day 2 hours
+                      "RRA:MIN:0.5:30:600", # 30 min for 12.5 days
+                      "RRA:MIN:0.5:120:600", # 2 hours for 50 days
+                      "RRA:MIN:0.5:1440:4015", # 1 day for 732 days
                       ]
     rrdtool.create(*rrd_parameter)
 
 
-def rrd_update(section, content):
+def rrd_update(section, content, timestamp="N"):
     values = ':'.join(map(lambda x : content[x], KEYINDEX[section]))
     print values
-    rrdtool.update(section.replace(" ","_") + ".rrd", "N:" + values)
+    rrdtool.update(section.replace(" ","_") + ".rrd", timestamp + ":" + values)
 
 
 def main():
-    stats = get_last_stats()
+    timestamp, stats = get_last_stats()
+    print timestamp
     stats = map(lambda x: x.strip(), stats)
 
     stats_dict = build_dict(stats)
@@ -197,7 +204,7 @@ def main():
         print('#####', section)
 	#rrd_create(section)
 	content = stats_dict[section]
-	rrd_update(section, content)
+	rrd_update(section, content, timestamp)
 
 #    for section in d:
 #        print("###", section)
