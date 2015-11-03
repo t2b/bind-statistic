@@ -188,14 +188,12 @@ def rrd_update(section, content, timestamp="N"):
     if not path.isfile(section.replace(" ", "_") + ".rrd"):
         rrd_create(section)
     values = ':'.join(map(lambda x: content[x], KEYINDEX[section]))
-    print values
     rrdtool.update(section.replace(" ", "_") + ".rrd",
                    timestamp + ":" + values)
 
 
 def main():
     timestamp, stats = get_last_stats()
-    print timestamp
     stats = map(lambda x: x.strip(), stats)
 
     stats_dict = build_dict(stats)
@@ -205,15 +203,8 @@ def main():
                        'Name Server Statistics',
                        'Socket I/O Statistics']:
             continue
-        print('#####', section)
-        # rrd_create(section)
         content = stats_dict[section]
         rrd_update(section, content, timestamp)
-
-#    for section in d:
-#        print("###", section)
-#        for key in d[section]:
-#            print(key)
 
 
 if __name__ == "__main__":

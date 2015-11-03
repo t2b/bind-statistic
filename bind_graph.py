@@ -194,7 +194,7 @@ def main():
         # rrd_create(section)
         # content = stats_dict[section]
         # rrd_update(section, content)
-        for duration in ("6h", "12h", "1d", "1w", "1m", "1y"):
+        for duration in ("6h", "12h", "1d", "1w", "30d", "180d", "1y"):
             rrd_graph(section, duration=duration)
 
 
