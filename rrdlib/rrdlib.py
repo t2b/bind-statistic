@@ -7,8 +7,8 @@ from os import path
 
 KEYINDEX = {
     'Incoming Queries': [
-        "NS",
         "A",
+        "NS",
         "CNAME",
         "SOA",
         "PTR",
@@ -107,7 +107,10 @@ KEYINDEX = {
         "TCP/IPv6 connections established",
         "TCP/IPv4 connections accepted",
         "TCP/IPv6 connections accepted",
+        "UDP/IPv4 recv errors",
         "UDP/IPv6 recv errors",
+        "TCP/IPv4 recv errors",
+        "TCP/IPv6 recv errors",
         ],
     'Name Server Statistics': [
         "IPv4 requests received",
@@ -144,13 +147,58 @@ def rainbow(n):
 
 def get_filename(name, directory="", extension=None):
     name = name.replace(" ", "_")
+    name = name.replace("/", "_")
     if extension is not None:
         name = "{}.{}".format(name, extension)
     return path.join(directory, name)
 
 
 def get_DSname(name):
-    return name.replace(" ", "_").replace("!", "not")
+    replacements = [[" ", "_"],
+                    ["!", "not"],
+                    ["UDP/IPv6", "UDP6"],
+                    ["UDP/IPv4", "UDP4"],
+                    ["TCP/IPv6", "TCP6"],
+                    ["TCP/IPv4", "TCP4"],
+                    ["connections", "con"],
+                    ["established", "establ"],
+                    ["socket", "sock"],
+                    ["failures", "fail"],
+                    ["(0)", ""],
+                    ["responses", "resp"],
+                    ["requests", "req"],
+                    ["received", "rec"],
+                    ["duplicate", "dupl"],
+                    ["queries", "qry"],
+                    ["resulted", "res"],
+                    ["recursion", "recur"],
+                    ["requested", "reque"],
+                    ["transfers", "trans"],
+                    ["completed", "compl"],
+                    ["authoritative", "auth"],
+                    ["answer", "ans"],
+                    ["successful", "succ"],
+                    ["auth_ans", "auth"],
+                    ["validation", "vali"],
+                    ["succeeded", "succ"],
+                    ["address", "addr"],
+                    ["fetches", "fet"],
+                    ["fetch", "fet"],
+                    ["failed", "fail"],
+                    ["IPv4", "v4"],
+                    ["IPv6", "v6"],
+                    ["attempted", "attemp"],
+                    ["delegations", "deleg"],
+                    ["<_10ms", "0ms"],
+                    ["10-100ms", "10ms"],
+                    ["100-500ms", "100ms"],
+                    ["500-800ms", "500ms"],
+                    ["800-1600ms", "800ms"],
+                    [">_1600ms", "1600ms"],
+                   ]
+    for repl in replacements:
+        name = name.replace(repl[0], repl[1])
+    return name
 
 
 def rrd_create(section, target_directory=""):
@@ -186,7 +234,7 @@ def rrd_update(section, content, timestamp="N", target_directory=""):
     rrdfile = get_filename(section, target_directory, "rrd")
     if not path.isfile(rrdfile):
         rrd_create(section, target_directory)
-    keys = KEYINDEX[section]
+    keys = content.keys()
     template = ":".join(map(lambda x: get_DSname(x), keys))
     values = ':'.join(map(lambda x: content[x], keys))
 

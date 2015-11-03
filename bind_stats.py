@@ -2,7 +2,7 @@
 
 from rrdlib import rrdlib
 
-STATSFILE = "/root/named.stats"
+STATSFILE = "named.stats"
 
 
 def get_last_stats():
@@ -44,12 +44,11 @@ def main():
     stats_dict = build_dict(stats)
 
     for section in rrdlib.KEYINDEX:
-        if section in ['Resolver Statistics',
-                       'Name Server Statistics',
-                       'Socket I/O Statistics']:
-            continue
         content = stats_dict[section]
-        rrdlib.rrd_update(section, content, timestamp)
+        try:
+            rrdlib.rrd_update(section, content, timestamp)
+        except Exception, e:
+            print "Error %s: %s" % (section, e)
 
 
 if __name__ == "__main__":
