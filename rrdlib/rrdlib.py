@@ -306,6 +306,7 @@ def rrd_graph(section, duration="6h", width=800, height=300,
                      "-w", str(width),
                      "-h", str(height),
                      "-a", "PNG",
+                     "--slope-mode",
                      "--title", section + " - " + duration,
                      "--watermark", str(datetime.now()),
                      "--vertical-label", "requests/s"]
@@ -314,13 +315,21 @@ def rrd_graph(section, duration="6h", width=800, height=300,
     for key in keys:
         DSname = get_DSname(key)
         rrdfile = get_filename(section + ".rrd")
-        rrd_parameter.append("DEF:_" + DSname + "=" + rrdfile + ":" + DSname +
+        rrd_parameter.append("DEF:" + DSname + "_AVG=" + rrdfile + ":" + DSname +
                              ":AVERAGE")
+        rrd_parameter.append("DEF:" + DSname + "_MIN=" + rrdfile + ":" + DSname +
+                             ":MIN")
+        rrd_parameter.append("DEF:" + DSname + "_MAX=" + rrdfile + ":" + DSname +
+                             ":MAX")
 
+
+    max_lable_length = max(map(len, keys)) + 2
     for i in xrange(len(keys)):
         key = keys[i]
-        DSname = "_" + get_DSname(key)
-        rrd_parameter.append("LINE1:" + DSname + colors[i] + ':' + key + '\\t')
+        DSname = get_DSname(key) + "_AVG"
+        lable = "{lable:<{lablelength}}".format(lable=key,
+                                                lablelength=max_lable_length)
+        rrd_parameter.append("LINE1:" + DSname + colors[i] + ':' + lable)
         rrd_parameter.append("GPRINT:" + DSname + ":LAST:Cur\: %6.2lf\\t")
         rrd_parameter.append("GPRINT:" + DSname + ":AVERAGE:Avg\: %6.2lf\\t")
         rrd_parameter.append("GPRINT:" + DSname + ":MIN:MIN\: %6.2lf\\t")
