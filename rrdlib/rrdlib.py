@@ -75,15 +75,27 @@ KEYINDEX = {
         "CNAME",
         "SOA",
         "PTR",
+        "MX",
         "TXT",
         "AAAA",
+        "SRV",
         "DS",
+        "DNSKEY",
+        "ANY",
         "RRSIG",
         "NSEC",
-        "DNSKEY",
         "!A",
+        "!NS",
+        "!CNAME",
+        "!SOA",
+        "!PTR",
+        "!MX",
+        "!TXT",
         "!AAAA",
+        "!SRV",
         "!DS",
+        "!DNSKEY",
+        "!ANY",
         "NXDOMAIN",
         ],
     'Incoming Requests': [
@@ -140,9 +152,12 @@ DSNAME = {
     '!AAAA': 'notAAAA',
     '!A': 'notA',
     'ANY': 'ANY',
+    '!ANY': 'notANY',
     'AXFR': 'AXFR',
     'CNAME': 'CNAME',
+    '!CNAME': 'notCNAME',
     'DNSKEY': 'DNSKEY',
+    '!DNSKEY': 'notDNSKEY',
     'DNSSEC NX validation succeeded': 'DNSSEC_NX_vali_succ',
     'DNSSEC validation attempted': 'DNSSEC_vali_attemp',
     'DNSSEC validation failed': 'DNSSEC_vali_fail',
@@ -167,12 +182,15 @@ DSNAME = {
     'IXFR': 'IXFR',
     'lame delegations received': 'lame_deleg_rec',
     'MX': 'MX',
+    '!MX': 'notMX',
     'NSEC': 'NSEC',
     'NS': 'NS',
+    '!NS': 'notNS',
     'NXDOMAIN': 'NXDOMAIN',
     'NXDOMAIN received': 'NXDOMAIN_rec',
     'other errors received': 'other_errors_rec',
     'PTR': 'PTR',
+    '!PTR': 'notPTR',
     'queries caused recursion': 'qry_caused_recur',
     'queries dropped': 'qry_dropped',
     'queries resulted in authoritative answer': 'qry_res_in_auth',
@@ -197,7 +215,9 @@ DSNAME = {
     'RRSIG': 'RRSIG',
     'SERVFAIL received': 'SERVFAIL_rec',
     'SOA': 'SOA',
+    '!SOA': 'notSOA',
     'SRV': 'SRV',
+    '!SRV': 'notSRV',
     'TCP/IPv4 connections accepted': 'TCP4_con_accepted',
     'TCP/IPv4 connections established': 'TCP4_con_establ',
     'TCP/IPv4 recv errors': 'TCP4_recv_errors',
@@ -212,6 +232,7 @@ DSNAME = {
     'truncated responses received': 'truncated_resp_rec',
     'truncated responses sent': 'truncated_resp_sent',
     'TXT': 'TXT',
+    '!TXT': 'notTXT',
     'UDP/IPv4 connections established': 'UDP4_con_establ',
     'UDP/IPv4 recv errors': 'UDP4_recv_errors',
     'UDP/IPv4 socket bind failures': 'UDP4_sock_bind_fail',
@@ -258,8 +279,14 @@ def rrd_create(section, target_directory=""):
                      "--step", "60",
                      "--start", '0']
 
+    DStype = "COUNTER"
+    if section == "Cache DB RRsets":
+        DStype = "ABSOLUTE"
+
     for key in keys:
-        rrd_parameter.append("DS:" + get_DSname(key) + ":COUNTER:90:U:U")
+        DSname = get_DSname(key)
+        rrd_parameter.append("DS:{DSname}:{DStype}:90:U:U".format(DSname=DSname,
+                                                                  DStype=DStype))
 
     rrd_parameter += ["RRA:AVERAGE:0.5:1:3000",  # 1 min for 30 hours
                       "RRA:AVERAGE:0.5:5:4320",  # 5 min for 15 days
@@ -290,7 +317,8 @@ def rrd_update(section, content, timestamp="N", target_directory=""):
 
     rrdtool.update(rrdfile,
                    "--template", template,
-                   timestamp + ":" + values)
+                   "{timestamp}:{values}".format(timestamp=timestamp,
+                                                 values=values))
 
 
 def rrd_graph(section, duration="6h", width=800, height=300,
@@ -307,7 +335,7 @@ def rrd_graph(section, duration="6h", width=800, height=300,
                      "-h", str(height),
                      "-a", "PNG",
                      "--slope-mode",
-                     "--title", section + " - " + duration,
+                     "--title", "{} - {}".format(section, duration),
                      "--watermark", str(datetime.now()),
                      "--vertical-label", "requests/s"]
 
@@ -315,24 +343,44 @@ def rrd_graph(section, duration="6h", width=800, height=300,
     for key in keys:
         DSname = get_DSname(key)
         rrdfile = get_filename(section + ".rrd")
-        rrd_parameter.append("DEF:" + DSname + "_AVG=" + rrdfile + ":" + DSname +
-                             ":AVERAGE")
-        rrd_parameter.append("DEF:" + DSname + "_MIN=" + rrdfile + ":" + DSname +
-                             ":MIN")
-        rrd_parameter.append("DEF:" + DSname + "_MAX=" + rrdfile + ":" + DSname +
-                             ":MAX")
+        rrd_line = "DEF:{DSname}_{type}={rrdfile}:{DSname}:{type}"
+        rrd_parameter.append(rrd_line.format(DSname=DSname,
+                                             rrdfile=rrdfile,
+                                             type="AVERAGE"))
+        # rrd_parameter.append(rrd_line.format(DSname=DSname,
+        #                                      rrdfile=rrdfile,
+        #                                      type="MIN"))
+        # rrd_parameter.append(rrd_line.format(DSname=DSname,
+        #                                      rrdfile=rrdfile,
+        #                                      type="MAX"))
 
-
-    max_lable_length = max(map(len, keys)) + 2
+    max_lable_length = max(map(len, keys))
     for i in xrange(len(keys)):
         key = keys[i]
-        DSname = get_DSname(key) + "_AVG"
+        DSname = get_DSname(key)
         lable = "{lable:<{lablelength}}".format(lable=key,
                                                 lablelength=max_lable_length)
-        rrd_parameter.append("LINE1:" + DSname + colors[i] + ':' + lable)
-        rrd_parameter.append("GPRINT:" + DSname + ":LAST:Cur\: %6.2lf\\t")
-        rrd_parameter.append("GPRINT:" + DSname + ":AVERAGE:Avg\: %6.2lf\\t")
-        rrd_parameter.append("GPRINT:" + DSname + ":MIN:MIN\: %6.2lf\\t")
-        rrd_parameter.append("GPRINT:" + DSname + ":MAX:Max\: %6.2lf\\n")
 
+        rrd_line1 = "LINE1:{DSname}_AVERAGE{color}:{lable}\\t"
+        rrd_parameter.append(rrd_line1.format(DSname=DSname,
+                                              color=colors[i],
+                                              lable=lable))
+
+        rrd_grpint = "GPRINT:{DSname}_AVERAGE:{type}:{lable}\: %7.2lf{space}"
+        rrd_parameter.append(rrd_grpint.format(DSname=DSname,
+                                               type="LAST",
+                                               lable="Cur",
+                                               space="\\t"))
+        rrd_parameter.append(rrd_grpint.format(DSname=DSname,
+                                               type="AVERAGE",
+                                               lable="Avg",
+                                               space="\\t"))
+        rrd_parameter.append(rrd_grpint.format(DSname=DSname,
+                                               type="MIN",
+                                               lable="Min",
+                                               space="\\t"))
+        rrd_parameter.append(rrd_grpint.format(DSname=DSname,
+                                               type="MAX",
+                                               lable="Max",
+                                               space="\\n"))
     rrdtool.graph(*rrd_parameter)
