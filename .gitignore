@@ -1,5 +1,6 @@
 *.png
 *.rrd
+*.html
 named.stats
 
 # Created by https://www.gitignore.io/api/python,vim

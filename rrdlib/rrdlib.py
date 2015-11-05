@@ -342,7 +342,8 @@ def rrd_graph(section, duration="6h", width=800, height=300,
                      "-h", str(height),
                      "-a", "PNG",
                      "--slope-mode",
-                     "--title", "{} - {}".format(section, duration),
+                     "--title", "{} - {} - {}".format(config.servername,
+                                                      section, duration),
                      "--watermark", str(datetime.now()),
                      "--vertical-label", "requests/s"]
 
