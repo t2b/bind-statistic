@@ -1,12 +1,11 @@
 #!/usr/bin/env python2
 
 from rrdlib import rrdlib
-
-STATSFILE = "named.stats"
+import config
 
 
 def get_last_stats():
-    with open(STATSFILE) as f:
+    with open(config.named_stats) as f:
         stats = f.readlines()
     last_line = stats[-1]
     timestamp = last_line.split()[-1][1:-1]

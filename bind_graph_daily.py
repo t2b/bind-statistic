@@ -6,7 +6,7 @@ import config
 
 def main():
     for section in rrdlib.KEYINDEX:
-        for duration in config.timespans:
+        for duration in config.timespans_daily:
             rrdlib.rrd_graph(section, duration=duration)
 
 

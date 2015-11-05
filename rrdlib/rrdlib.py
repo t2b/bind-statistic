@@ -4,6 +4,7 @@ import rrdtool
 import colorsys
 from datetime import datetime
 from os import path
+import config
 
 KEYINDEX = {
     'Incoming Queries': [
@@ -272,7 +273,9 @@ def get_DSname(name):
     return name
 
 
-def rrd_create(section, target_directory=""):
+def rrd_create(section, target_directory=None):
+    if target_directory is None:
+        target_directory = config.rrd_directory
     keys = KEYINDEX[section]
 
     rrd_parameter = [get_filename(section, target_directory, "rrd"),
@@ -285,8 +288,8 @@ def rrd_create(section, target_directory=""):
 
     for key in keys:
         DSname = get_DSname(key)
-        rrd_parameter.append("DS:{DSname}:{DStype}:90:U:U".format(DSname=DSname,
-                                                                  DStype=DStype))
+        rrd_parameter.append(
+            "DS:{DSname}:{DStype}:90:U:U".format(DSname=DSname, DStype=DStype))
 
     rrd_parameter += ["RRA:AVERAGE:0.5:1:3000",  # 1 min for 30 hours
                       "RRA:AVERAGE:0.5:5:4320",  # 5 min for 15 days
@@ -307,10 +310,12 @@ def rrd_create(section, target_directory=""):
     rrdtool.create(*rrd_parameter)
 
 
-def rrd_update(section, content, timestamp="N", target_directory=""):
-    rrdfile = get_filename(section, target_directory, "rrd")
+def rrd_update(section, content, timestamp="N", rrd_directory=None):
+    if rrd_directory is None:
+        rrd_directory=config.rrd_directory
+    rrdfile = get_filename(section, rrd_directory, "rrd")
     if not path.isfile(rrdfile):
-        rrd_create(section, target_directory)
+        rrd_create(section, rrd_directory)
     keys = content.keys()
     template = ":".join(map(lambda x: get_DSname(x), keys))
     values = ':'.join(map(lambda x: content[x], keys))
@@ -322,7 +327,9 @@ def rrd_update(section, content, timestamp="N", target_directory=""):
 
 
 def rrd_graph(section, duration="6h", width=800, height=300,
-              target_directory=""):
+              target_directory=None):
+    if target_directory is None:
+        target_directory = config.graph_directory
     keys = KEYINDEX[section]
 
     outputfile = get_filename("{}-{}.png".format(section, duration),
@@ -342,7 +349,8 @@ def rrd_graph(section, duration="6h", width=800, height=300,
     colors = rainbow(len(keys))
     for key in keys:
         DSname = get_DSname(key)
-        rrdfile = get_filename(section + ".rrd")
+        rrdfile = get_filename(section, directory=config.rrd_directory,
+                               extension="rrd")
         rrd_line = "DEF:{DSname}_{type}={rrdfile}:{DSname}:{type}"
         rrd_parameter.append(rrd_line.format(DSname=DSname,
                                              rrdfile=rrdfile,

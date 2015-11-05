@@ -2,7 +2,7 @@
 
 set -e
 
-scp bind_*.py ttb.shack:
+scp *.py ttb.shack:
 scp rrdlib/*.py ttb.shack:rrdlib/
 ssh ttb.shack rm \*.png || true
 ssh ttb.shack time /root/bind_graph.py
