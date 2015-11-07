@@ -6,21 +6,23 @@ from rrdlib import rrdlib
 from collections import namedtuple
 
 
-sectionhtmltemplate = """<head>
+sectionhtmltemplate = """<!DOCTYPE html>
+<head>
 <title>{{servername}} Bind9 stats - {{ section }}</title>
 </head>
 <body>
-<h1>{{servername}} Bind9 stats</h1>
+<h1><a href="index.html">{{servername}} Bind9 stats</a></h1>
 {% for sec in sectionnames %} <a href="{{sec.filename}}">{{sec.name}}</a> {% endfor %}
 {% for graph in graphs %}
 <h2>{{section}} - {{graph.duration}}</h2>
 <img src="{{graph.file}}">
 {% endfor %}
 </body>
-"""
+</html>"""
 
 
-indexhtmltemplate = """<head>
+indexhtmltemplate = """<!DOCTYPE html>
+<head>
 <title>{{servername}} Bind9 stats</title>
 </head>
 <body>
@@ -31,8 +33,7 @@ indexhtmltemplate = """<head>
 <a href="{{sec.filename}}"><img src="{{sec.graph}}"></a>
 {% endfor %}
 </body>
-"""
-
+</html>"""
 
 
 def generate_index_html(duration="6h"):
@@ -59,7 +60,9 @@ def generate_section_html(section):
 
     graphs = []
     Graph = namedtuple("Graph", ["duration", "file"])
-    for duration in config.timespans + config.timespans_hourly + config.timespans_daily:
+    for duration in config.timespans \
+            + config.timespans_hourly \
+            + config.timespans_daily:
         graphs.append(Graph(duration,
                             rrdlib.get_filename("{}-{}.png".format(section,
                                                                    duration))))
@@ -70,7 +73,8 @@ def generate_section_html(section):
 
 
 def main():
-    with open(rrdlib.get_filename("index.html", directory=config.graph_directory), "w") as f:
+    with open(rrdlib.get_filename("index.html",
+                                  directory=config.graph_directory), "w") as f:
         f.write(generate_index_html("1d"))
 
     for section in rrdlib.KEYINDEX:

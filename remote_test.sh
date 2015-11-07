@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+# set -e
 
 scp *.py ttb.shack:
 scp rrdlib/*.py ttb.shack:rrdlib/

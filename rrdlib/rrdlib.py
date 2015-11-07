@@ -5,6 +5,7 @@ import colorsys
 from datetime import datetime
 from os import path
 import config
+import re
 
 KEYINDEX = {
     'Incoming Queries': [
@@ -12,6 +13,7 @@ KEYINDEX = {
         "NS",
         "CNAME",
         "SOA",
+        "NULL",
         "PTR",
         "MX",
         "TXT",
@@ -28,6 +30,7 @@ KEYINDEX = {
         "NS",
         "CNAME",
         "SOA",
+        "NULL",
         "PTR",
         "MX",
         "TXT",
@@ -89,6 +92,7 @@ KEYINDEX = {
         "!NS",
         "!CNAME",
         "!SOA",
+        "!NULL",
         "!PTR",
         "!MX",
         "!TXT",
@@ -187,6 +191,7 @@ DSNAME = {
     'NSEC': 'NSEC',
     'NS': 'NS',
     '!NS': 'notNS',
+    '!NULL': 'notNULL',
     'NXDOMAIN': 'NXDOMAIN',
     'NXDOMAIN received': 'NXDOMAIN_rec',
     'other errors received': 'other_errors_rec',
@@ -312,11 +317,14 @@ def rrd_create(section, target_directory=None):
 
 def rrd_update(section, content, timestamp="N", rrd_directory=None):
     if rrd_directory is None:
-        rrd_directory=config.rrd_directory
+        rrd_directory = config.rrd_directory
     rrdfile = get_filename(section, rrd_directory, "rrd")
     if not path.isfile(rrdfile):
         rrd_create(section, rrd_directory)
-    keys = content.keys()
+    keys = list(set(content.keys()) & set(KEYINDEX[section]))
+    missing_keys = set(content.keys()) - set(KEYINDEX[section])
+    if missing_keys:
+        print "missing keys in {}: {}".format(section, missing_keys)
     template = ":".join(map(lambda x: get_DSname(x), keys))
     values = ':'.join(map(lambda x: content[x], keys))
 
@@ -393,3 +401,55 @@ def rrd_graph(section, duration="6h", width=800, height=300,
                                                lable="Max",
                                                space="\\n"))
     rrdtool.graph(*rrd_parameter)
+
+
+def rrd_info(section, target_directory=None):
+    info = rrdtool.info(get_filename(section, config.rrd_directory, "rrd"))
+    DS = []
+
+    re1 = '(ds)'      # Word 1
+    re2 = '(\\[)'     # Any Single Character 1
+    re3 = '((?:[a-z][a-z0-9_]*))'     # Variable Name 1
+    re4 = '(\\])'     # Any Single Character 2
+    re5 = '(\\.)'     # Any Single Character 3
+    re6 = '(index)'   # Word 2
+
+    rg = re.compile(re1 + re2 + re3 + re4 + re5 + re6, re.IGNORECASE | re.DOTALL)
+    for key in info.keys():
+        m = rg.search(key)
+        if m:
+            # word1 = m.group(1)
+            # c1 = m.group(2)
+            var1 = m.group(3)
+            # c2 = m.group(4)
+            # c3 = m.group(5)
+            # word2 = m.group(6)
+
+            DS.append(var1)
+    return DS
+
+
+def rrd_tune(section, target_directory=None):
+    if target_directory is None:
+        target_directory = config.rrd_directory
+
+    DSlist_rrdfile = set(rrd_info(section))
+    DSlist_lib = set(map(get_DSname, KEYINDEX[section]))
+
+    missingDS = DSlist_lib - DSlist_rrdfile
+
+    rrd_parameter = [get_filename(section, target_directory, "rrd")]
+
+    DStype = "COUNTER"
+    if section == "Cache DB RRsets":
+        DStype = "ABSOLUTE"
+
+
+    for DSname in missingDS:
+        rrd_parameter.append(
+            "DS:{DSname}:{DStype}:90:U:U".format(DSname=DSname, DStype=DStype))
+
+    for line in rrd_parameter:
+        print line
+
+    rrdtool.tune(*rrd_parameter)
