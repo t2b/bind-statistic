@@ -1,0 +1,3 @@
+* *  * * *	bind	/usr/sbin/rndc stats && /opt/bind-statistic/bind_stats.py && /opt/bind-statistic/bind_stats.py && /opt/bind-statistic/bind_graph.py
+10 *  * * *	bind	/opt/bind-statistic/bind_graph_hourly.py
+12 1  * * *	bind	/opt/bind-statistic/bind_graph_daily.py
